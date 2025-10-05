@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 from openai import OpenAI
 from flask_cors import CORS
@@ -6,10 +7,13 @@ from hastaliklar import hastaliklar
 app = Flask(__name__)
 CORS(app)
 
-API_KEY = "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"
+# Environment variable'dan API key al
+API_KEY = os.environ.get("OPENAI_API_KEY")
+if not API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is not set!")
+
 client = OpenAI(api_key=API_KEY)
 
-# ✅ /api/cases route'u ekledik
 @app.route("/api/cases", methods=["GET"])
 def get_cases():
     simplified_cases = []
@@ -21,7 +25,6 @@ def get_cases():
         })
     return jsonify(simplified_cases)
 
-# ✅ /api/ask route'u ve diseaseIndex ile çalışacak şekilde düzelttik
 @app.route("/api/ask", methods=["POST"])
 def ask():
     data = request.json
@@ -34,25 +37,25 @@ def ask():
     if disease_index >= len(hastaliklar):
         return jsonify({"error": "Invalid disease index"}), 400
     
-    # Index'ten hastalık adını al
     hastalik = hastaliklar[disease_index]["ad"]
     
-    # OpenAI'ya sor
-    chat_completion = client.chat.completions.create(
-        messages=[{
-            "role": "user",
-            "content": (f"Doktorun sorduğu {question} sorusunu, "
-                        f"bir {hastalik} hastası gibi cevapla, "
-                        f"hastalık adını verme, cevabı en fazla 1-2 cümle yaz.")
-        }],
-        model="gpt-4o-mini",
-    )
+    try:
+        chat_completion = client.chat.completions.create(
+            messages=[{
+                "role": "user",
+                "content": (f"Doktorun sorduğu {question} sorusunu, "
+                            f"bir {hastalik} hastası gibi cevapla, "
+                            f"hastalık adını verme, cevabı en fazla 1-2 cümle yaz.")
+            }],
+            model="gpt-4o-mini",
+        )
+        
+        cevap = chat_completion.choices[0].message.content
+        return jsonify({"answer": cevap})
     
-    cevap = chat_completion.choices[0].message.content
-    
-    # ✅ Frontend "answer" bekliyor, "cevap" değil
-    return jsonify({"answer": cevap})
+    except Exception as e:
+        print(f"OpenAI API Error: {e}")
+        return jsonify({"error": "Soru cevaplanırken hata oluştu"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
-
