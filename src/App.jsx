@@ -9,9 +9,10 @@ const EmergencyQuiz = () => {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [cases, setCases] = useState([]);
+  const [currentStep, setCurrentStep] = useState('question'); // question, fizik, radyo, ekg, tetkik, guess
   const scrollRef = useRef(null);
 
-  // ⚠️ Backend URL'nizi buraya ekleyin
+  // Backend URL
   const BACKEND_URL = 'https://acil-servis-quiz.onrender.com';
 
   useEffect(() => {
@@ -42,8 +43,10 @@ const EmergencyQuiz = () => {
 
   const loadCase = (caseLevel, caseData = cases) => {
     setQuestionCount(0);
+    setCurrentStep('question');
     if (caseLevel >= caseData.length) {
       setStoryText('🎉 TEBRİKLER! Tüm vakaları doğru bildiniz!');
+      setCurrentStep('finished');
       return;
     }
     const currentCase = caseData[caseLevel];
@@ -69,8 +72,14 @@ const EmergencyQuiz = () => {
       });
       
       const data = await response.json();
-      setQuestionCount(prev => prev + 1);
-      setStoryText(prev => `${prev}\n\n💬 Hasta Cevap ${questionCount + 1}: ${data.answer}`);
+      const newQuestionCount = questionCount + 1;
+      setQuestionCount(newQuestionCount);
+      setStoryText(prev => `${prev}\n\n💬 Hasta Cevap ${newQuestionCount}: ${data.answer}`);
+      
+      // 2 soru sorulduysa fizik muayeneye geç
+      if (newQuestionCount >= 2) {
+        setCurrentStep('fizik');
+      }
     } catch (error) {
       console.error('Soru sorulurken hata:', error);
       setStoryText(prev => `${prev}\n\n❌ Soru gönderilirken hata oluştu.`);
@@ -82,21 +91,25 @@ const EmergencyQuiz = () => {
   const showFizik = () => {
     const currentCase = cases[level];
     setStoryText(prev => `${prev}\n\n👉 Fizik Muayene: ${currentCase.klinik_bulgular.fizik_muayene}`);
+    setCurrentStep('radyo');
   };
 
   const showRadyoloji = () => {
     const currentCase = cases[level];
     setStoryText(prev => `${prev}\n\n👉 Radyolojik Görüntüler: ${currentCase.klinik_bulgular.radyolojik_goruntuler}`);
+    setCurrentStep('ekg');
   };
 
   const showEkg = () => {
     const currentCase = cases[level];
     setStoryText(prev => `${prev}\n\n👉 EKG: ${currentCase.klinik_bulgular.ekg}`);
+    setCurrentStep('tetkik');
   };
 
   const showTetkik = () => {
     const currentCase = cases[level];
     setStoryText(prev => `${prev}\n\n👉 Tetkikler: ${currentCase.klinik_bulgular.tetkikler}`);
+    setCurrentStep('guess');
   };
 
   const checkGuess = () => {
@@ -112,11 +125,13 @@ const EmergencyQuiz = () => {
       }, 2000);
     } else {
       setStoryText(prev => `${prev}\n\n❌ Yanlış! Doğru cevap: ${cases[level].ad}\nOyun Bitti.`);
+      setCurrentStep('finished');
     }
   };
 
   const renderButtons = () => {
-    if (questionCount < 2) {
+    // Soru sorma aşaması
+    if (currentStep === 'question') {
       return (
         <div className="space-y-3">
           <input
@@ -139,59 +154,77 @@ const EmergencyQuiz = () => {
       );
     }
 
-    const currentCase = cases[level];
-    const hasShownFizik = storyText.includes('Fizik Muayene:');
-    const hasShownRadyo = storyText.includes('Radyolojik Görüntüler:');
-    const hasShownEkg = storyText.includes('EKG:');
-    const hasShownTetkik = storyText.includes('Tetkikler:');
-
-    if (!hasShownTetkik) {
-      if (!hasShownFizik) {
-        return (
-          <button onClick={showFizik} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition">
-            <Stethoscope size={20} /> Fizik Muayene
-          </button>
-        );
-      }
-      if (!hasShownRadyo) {
-        return (
-          <button onClick={showRadyoloji} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition">
-            <FileText size={20} /> Radyolojik Görüntüler
-          </button>
-        );
-      }
-      if (!hasShownEkg) {
-        return (
-          <button onClick={showEkg} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition">
-            <Activity size={20} /> EKG
-          </button>
-        );
-      }
+    // Fizik Muayene
+    if (currentStep === 'fizik') {
       return (
-        <button onClick={showTetkik} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition">
+        <button 
+          onClick={showFizik} 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition"
+        >
+          <Stethoscope size={20} /> Fizik Muayene
+        </button>
+      );
+    }
+
+    // Radyoloji
+    if (currentStep === 'radyo') {
+      return (
+        <button 
+          onClick={showRadyoloji} 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition"
+        >
+          <FileText size={20} /> Radyolojik Görüntüler
+        </button>
+      );
+    }
+
+    // EKG
+    if (currentStep === 'ekg') {
+      return (
+        <button 
+          onClick={showEkg} 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition"
+        >
+          <Activity size={20} /> EKG
+        </button>
+      );
+    }
+
+    // Tetkikler
+    if (currentStep === 'tetkik') {
+      return (
+        <button 
+          onClick={showTetkik} 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition"
+        >
           <Heart size={20} /> Tetkikler
         </button>
       );
     }
 
-    return (
-      <div className="space-y-3">
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && checkGuess()}
-          placeholder="Tahmininizi yazın"
-          className="w-full px-4 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 text-base"
-        />
-        <button
-          onClick={checkGuess}
-          className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition"
-        >
-          <ChevronRight size={20} /> Tahmin Et
-        </button>
-      </div>
-    );
+    // Tahmin etme
+    if (currentStep === 'guess') {
+      return (
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && checkGuess()}
+            placeholder="Tahmininizi yazın"
+            className="w-full px-4 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 text-base"
+          />
+          <button
+            onClick={checkGuess}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition"
+          >
+            <ChevronRight size={20} /> Tahmin Et
+          </button>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   if (screen === 'welcome') {
@@ -252,7 +285,7 @@ const EmergencyQuiz = () => {
         </div>
         
         <div className="p-4 bg-white border-t-2 border-gray-200 space-y-3">
-          {cases.length > 0 && level < cases.length && !storyText.includes('TEBRİKLER') && !storyText.includes('Oyun Bitti') && renderButtons()}
+          {cases.length > 0 && currentStep !== 'finished' && renderButtons()}
           
           <button
             onClick={() => window.close()}
