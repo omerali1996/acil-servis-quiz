@@ -6,7 +6,7 @@ from hastaliklar import hastaliklar
 app = Flask(__name__)
 CORS(app)
 
-API_KEY = "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"
+API_KEY = "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"
 client = OpenAI(api_key=API_KEY)
 
 # ✅ /api/cases route'u ekledik
@@ -55,3 +55,4 @@ def ask():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
