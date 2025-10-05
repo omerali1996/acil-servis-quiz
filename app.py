@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
 from openai import OpenAI
+from flask_cors import CORS
 from hastaliklar import hastaliklar
 
 app = Flask(__name__)
-
+CORS(app) 
 API_KEY = "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"
 client = OpenAI(api_key=API_KEY)
 
@@ -41,3 +42,4 @@ def ask():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
