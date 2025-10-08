@@ -20,7 +20,7 @@ def get_cases():
     for case in hastaliklar:
         simplified_cases.append({
             "ad": case["ad"],
-            "hikaye": case["hikaye"],
+            "hikaye": case["hikaye"].replace(" Klinik Bulgular:", "").strip(),
             "klinik_bulgular": case["klinik_bulgular"]
         })
     return jsonify(simplified_cases)
@@ -59,3 +59,4 @@ def ask():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
